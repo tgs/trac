@@ -257,7 +257,7 @@ class NotifyEmail(Notify):
     from_email = 'trac+tickets@localhost'
     subject = ''
     template_name = None
-    nodomaddr_re = re.compile(r'[\w\d_\.\-]+')
+    nodomaddr_re = re.compile(r'^[\w\d_\.\-]+$')
     addrsep_re = re.compile(r'[;\s,]+')
 
     def __init__(self, env):
@@ -355,20 +355,29 @@ class NotifyEmail(Notify):
                 return False
             return True
 
+        def strip_domain(address):
+            pos = address.find('@')
+            if pos == -1:
+                return address
+            return address[:pos]
+
         if not is_email(address):
             if address == 'anonymous':
                 return None
             if self.email_map.has_key(address):
                 address = self.email_map[address]
-            elif NotifyEmail.nodomaddr_re.match(address):
-                if self.config.getbool('notification', 'use_short_addr'):
-                    return address
-                domain = self.config.get('notification', 'smtp_default_domain')
-                if domain:
-                    address = "%s@%s" % (address, domain)
-                else:
-                    self.env.log.info("Email address w/o domain: %s" % address)
-                    return None
+            else:
+                # ignored domain may still exists
+                address = strip_domain(address)
+                if NotifyEmail.nodomaddr_re.match(address):
+                    if self.config.getbool('notification', 'use_short_addr'):
+                        return address
+                    domain = self.config.get('notification', 'smtp_default_domain')
+                    if domain:
+                        address = "%s@%s" % (address, domain)
+                    else:
+                        self.env.log.info("Email address w/o domain: %s" % address)
+                        return None
 
         mo = self.shortaddr_re.search(address)
         if mo:
