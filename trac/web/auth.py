@@ -79,6 +79,16 @@ class LoginModule(Component):
         authname = None
         if req.remote_user:
             authname = req.remote_user
+            _kerb = self.env.config.get('notification', 'ignore_domains', '')
+            if self.ignore_case:
+                authname = authname.lower()
+                _kerb_domains = [x.strip() for x in _kerb.lower().split(',')]
+            else:
+                _kerb_domains = [x.strip() for x in _kerb.split(',')]
+            _pos = authname.find('@')
+            if _pos != -1:
+                if authname[_pos+1:] in _kerb_domains:
+                    authname = authname[0:_pos]
         elif req.incookie.has_key('trac_auth'):
             authname = self._get_name_for_cookie(req, req.incookie['trac_auth'])
 
@@ -142,9 +152,17 @@ class LoginModule(Component):
             raise TracError(tag_("Authentication information not available. "
                                  "Please refer to the %(inst_doc)s.",
                                  inst_doc=inst_doc))
-        remote_user = req.remote_user
+        _kerb = self.env.config.get('notification', 'ignore_domains', '')
         if self.ignore_case:
-            remote_user = remote_user.lower()
+            remote_user = req.remote_user.lower()
+            _kerb_domains = [x.strip() for x in _kerb.lower().split(',')]
+        else:
+            remote_user = req.remote_user
+            _kerb_domains = [x.strip() for x in _kerb.split(',')]
+        _pos = remote_user.find('@')
+        if _pos != -1:
+            if remote_user[_pos+1:] in _kerb_domains:
+                remote_user = remote_user[0:_pos]
 
         assert req.authname in ('anonymous', remote_user), \
                _('Already logged in as %(user)s.', user=req.authname)
